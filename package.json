@@ -57,6 +57,7 @@
     "prettier": "^2.0.5",
     "prompts": "^2.3.2",
     "robotjs": "^0.6.0",
-    "text-to-image": "^2.3.0"
+    "text-to-image": "^2.3.0",
+    "util": "^0.12.3"
   }
 }

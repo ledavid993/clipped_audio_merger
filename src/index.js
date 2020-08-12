@@ -68,7 +68,7 @@ async function run() {
       return new Promise((resolve, reject) => {
         setTimeout(() => {
           resolve()
-        }, 500)
+        }, 600)
       })
     }
 
@@ -76,33 +76,7 @@ async function run() {
       await sleep()
     }
 
-    const questions = [
-      {
-        type: 'text',
-        name: 'question',
-        message: 'What is the question?',
-        skip: useCopied,
-      },
-      {
-        type: 'text',
-        name: 'answer',
-        message: 'What is the answer?',
-        skip: useCopied,
-      },
-      {
-        type: 'text',
-        name: 'filename',
-        message: 'What is the filename?',
-        skip: useCopied,
-      },
-    ]
-
-    const response = await prompt(questions)
-
-    if (
-      (response.question === '' && copied.question === '') ||
-      (copied.answer === '' && response.answer === '')
-    ) {
+    if (copied.question === '' || copied.answer === '') {
       throw Error('Please enter a question and an answer')
     }
 
@@ -121,6 +95,7 @@ async function run() {
     })
   } catch (err) {
     console.log(`${err}`.red)
+    run()
   }
 }
 

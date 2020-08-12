@@ -4,6 +4,9 @@ const { prompt } = require('enquirer')
 const NodeID3 = require('node-id3')
 const nodeHtmlToImage = require('node-html-to-image')
 import htmlString from './htmlString'
+import { exit } from 'process'
+import { grey } from 'colors'
+const util = require('util')
 
 class Main {
   constructor(pollyInstance) {
@@ -12,6 +15,9 @@ class Main {
     this.basePath = null
     this.copied = false
     this.rawResponse = null
+    this.debug = false
+    this.readdir = util.promisify(fs.readdir)
+    this.readFile = util.promisify(fs.readFile)
   }
 
   async initialPrompt() {
@@ -20,11 +26,15 @@ class Main {
         type: 'text',
         name: 'base',
         message: 'Base dir name (optional)?',
+        initial: '',
+        skip: this.debug,
       },
       {
         type: 'text',
         name: 'sub',
         message: 'Sub directory name (optional)?',
+        initial: '',
+        skip: this.debug,
       },
     ]
 
@@ -57,8 +67,8 @@ class Main {
         response.filename?.length !== 0
           ? response.filename
           : today + time,
-      question: `<speak>${response.question}<break time="1s"/></speak>`,
-      answer: `<speak>${response.answer}<break time="1s"/></speak>`,
+      question: `<speak><amazon:auto-breaths>Question${response.question}<break time="1s"/></amazon:auto-breaths></speak>`,
+      answer: `<speak><amazon:auto-breaths>Answer${response.answer}<break time="1s"/></amazon:auto-breaths></speak>`,
     }
   }
 
@@ -91,25 +101,82 @@ class Main {
     })
   }
 
-  async convertTextToImage() {
-    console.log('Converting text to image...'.yellow)
-    let updateHtmlString = await htmlString.replace(
+  async convertImageToHtml() {
+    let images = []
+    try {
+      images = await this.readdir(
+        'C:\\Users\\David\\Downloads\\temp-pic',
+      )
+    } catch (err) {
+      console.log(err)
+    }
+
+    return Promise.all(
+      images
+        .filter((file) => {
+          if (file.match(/\.(gif|jpe?g|tiff?|png|webp|bmp)$/i)) {
+            return file
+          }
+        })
+        .map(async (file) => {
+          const filePath = `C:\\Users\\David\\Downloads\\temp-pic\\${file}`
+          const fileext = path.extname(file).split('.').pop()
+          try {
+            const image = await this.readFile(filePath).then(
+              (buf) => {
+                const base64Image = new Buffer.from(buf).toString(
+                  'base64',
+                )
+                return `data:image/${fileext};base64,` + base64Image
+              },
+            )
+            return `<img style="height: 100%; width: 100%;" src='${image}'/>`
+          } catch (e) {
+            console.log(e)
+          }
+        }),
+    ).then((res) => res.join(' '))
+  }
+
+  async updateHtmlWithImg() {
+    let updateHtmlString = htmlString.replace(
       /%answer%/gi,
       this.rawResponse.answer,
     )
-    updateHtmlString = await updateHtmlString.replace(
+    updateHtmlString = updateHtmlString.replace(
       /%question%/gi,
       this.rawResponse.question,
     )
+    const imagesTags = await this.convertImageToHtml()
 
-    await nodeHtmlToImage({
-      output: path.join(
-        __dirname,
-        `../temp/${this.response.filename}.png`,
-      ),
-      html: updateHtmlString,
+    if (imagesTags.length !== 0) {
+      updateHtmlString = updateHtmlString.replace(
+        /%images%/gi,
+        `<div class="left-container" style="
+        display: grid;
+        gap: 3px;
+        grid-template-columns: auto auto;
+        max-height: 1000px;
+      ">${imagesTags}</div>`,
+      )
+    }
+
+    return updateHtmlString
+  }
+
+  async convertTextToImage() {
+    console.log('Converting text and images...'.yellow)
+
+    await this.updateHtmlWithImg().then(async (updateHtmlString) => {
+      await nodeHtmlToImage({
+        output: path.join(
+          __dirname,
+          `../temp/${this.response.filename}.png`,
+        ),
+        html: updateHtmlString,
+      })
+      console.log('Text and images task finish.'.green)
     })
-    console.log('Text image task finish.'.green)
   }
 
   async createQuestionMp3() {
@@ -187,6 +254,18 @@ class Main {
 
       for (const file of files) {
         fs.unlink(path.join(directory2, file), (err) => {
+          if (err) throw err
+        })
+      }
+    })
+
+    const directory3 = 'C:\\Users\\David\\Downloads\\temp-pic'
+
+    await fs.readdir(directory3, (err, files) => {
+      if (err) throw err
+
+      for (const file of files) {
+        fs.unlink(path.join(directory3, file), (err) => {
           if (err) throw err
         })
       }
