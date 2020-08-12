@@ -36,6 +36,7 @@
     "@nut-tree/nut-js": "^1.4.2",
     "archiver": "^5.0.0",
     "aws-sdk": "^2.729.0",
+    "canvas": "^2.6.1",
     "chokidar": "^3.4.2",
     "colors": "^1.4.0",
     "enquirer": "^2.3.6",
@@ -50,9 +51,12 @@
     "mkdirp": "^1.0.4",
     "nexe": "^3.3.7",
     "node-cmd": "^3.0.0",
+    "node-html-to-image": "^3.0.1",
+    "node-id3": "^0.1.18",
     "node-watch": "^0.6.4",
     "prettier": "^2.0.5",
     "prompts": "^2.3.2",
-    "robotjs": "^0.6.0"
+    "robotjs": "^0.6.0",
+    "text-to-image": "^2.3.0"
   }
 }

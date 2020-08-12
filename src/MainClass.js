@@ -1,7 +1,9 @@
 import path from 'path'
 import fs from 'fs'
-const chokidar = require('chokidar')
 const { prompt } = require('enquirer')
+const NodeID3 = require('node-id3')
+const nodeHtmlToImage = require('node-html-to-image')
+import htmlString from './htmlString'
 
 class Main {
   constructor(pollyInstance) {
@@ -9,6 +11,7 @@ class Main {
     this.polly = pollyInstance
     this.basePath = null
     this.copied = false
+    this.rawResponse = null
   }
 
   async initialPrompt() {
@@ -34,7 +37,7 @@ class Main {
     this.basePath = 'audio' + base + sub
   }
 
-  formatResponse(response) {
+  async formatResponse(response) {
     var date = new Date()
     var today =
       date.getFullYear() +
@@ -49,7 +52,7 @@ class Main {
       '_' +
       date.getSeconds()
 
-    return {
+    return await {
       filename:
         response.filename?.length !== 0
           ? response.filename
@@ -60,7 +63,53 @@ class Main {
   }
 
   async getQnA(response) {
-    this.response = this.formatResponse(response)
+    this.rawResponse = response
+    this.response = await this.formatResponse(response)
+  }
+
+  writeImageToDisk(type, image) {
+    return new Promise((resolve, reject) => {
+      let data = image.replace(/^data:image\/\w+;base64,/, '')
+      let buf = new Buffer(data, 'base64')
+      fs.writeFile(
+        path.join(
+          __dirname,
+          `../temp/${this.response.filename}.${type}.jpg`,
+        ),
+        buf,
+        function (err) {
+          if (err) {
+            console.log(err)
+            reject()
+          }
+          resolve()
+          console.log(
+            `Finishing converting text of ${type} to image`.green,
+          )
+        },
+      )
+    })
+  }
+
+  async convertTextToImage() {
+    console.log('Converting text to image...'.yellow)
+    let updateHtmlString = await htmlString.replace(
+      /%answer%/gi,
+      this.rawResponse.answer,
+    )
+    updateHtmlString = await updateHtmlString.replace(
+      /%question%/gi,
+      this.rawResponse.question,
+    )
+
+    await nodeHtmlToImage({
+      output: path.join(
+        __dirname,
+        `../temp/${this.response.filename}.png`,
+      ),
+      html: updateHtmlString,
+    })
+    console.log('Text image task finish.'.green)
   }
 
   async createQuestionMp3() {
@@ -95,6 +144,22 @@ class Main {
       .then(() => console.log('finished creating answer mp3'))
 
     console.log('moving on to next step...'.yellow)
+  }
+
+  async updateMp3Meta() {
+    console.log('Updating meta to add text...'.yellow)
+    const file = path.join(
+      __dirname,
+      `../temp/${this.response.filename}.question.mp3`,
+    )
+    let tags = {
+      APIC: path.join(
+        __dirname,
+        `../temp/${this.response.filename}.png`,
+      ),
+    }
+    await NodeID3.write(tags, file)
+    console.log('Completed updating meta of adding text...'.green)
   }
 
   async mergeFiles() {

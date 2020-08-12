@@ -28,7 +28,7 @@ const watcher = chokidar.watch(
 
 watcher
   .on('change', (path) => {
-    if (!setDir && copied.question !== '' && copied.answer !== '')
+    if (!setDir || (copied.question !== '' && copied.answer !== ''))
       return
     console.log(`File ${path} has been changed`.magenta)
     if (!copied.question) {
@@ -107,19 +107,20 @@ async function run() {
     }
 
     await main.getQnA(useCopied ? copied : response)
+    await main.convertTextToImage()
     await main.createQuestionMp3()
     await main.createAnswerMp3()
+    await main.updateMp3Meta()
     await main.mergeFiles()
     await main.deleteTempFiles().then(() => {
-      console.log('deleted temp files'.green)
+      console.log('deleted all temp files...'.green)
       console.log('-------------------------------------')
       setTimeout(() => {
         run()
       }, 1000)
     })
   } catch (err) {
-    console.log('No Reponse was entered'.red)
-    run()
+    console.log(`${err}`.red)
   }
 }
 
