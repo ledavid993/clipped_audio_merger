@@ -1,0 +1,5 @@
+node_modules
+dist
+audio
+temp-clip
+src/aws.config.js
